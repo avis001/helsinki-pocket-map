@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f3b5c">
+<title>Helsinki Pocket Map</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Inter+Tight:wght@400;500;600&display=swap">
+<style>
+/* Layout: full-bleed map, floating controls, bottom sheet listing the 62 brochure spots + hand notes */
+:root{
+  --bg:#f5f7f8; --panel:#ffffff; --fg:#14232e; --muted:#5d6e7a; --line:#dde4e8;
+  --accent:#0f5c8f; --me:#1a73e8;
+  --c-classics:#e03a2f; --c-culture:#1f4fb3; --c-art:#d96aa0; --c-sauna:#e4a422;
+  --c-family:#f1cc1c; --c-shop:#7fa6d8; --c-nature:#4f9a5b; --c-harbour:#3a3530; --c-notes:#6b3fa0;
+  --display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --body:"Inter Tight",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0e1418; --panel:#162027; --fg:#e6edf1; --muted:#93a4af; --line:#26343d;
+  --accent:#6fb4e6; --me:#5ea2ff; --c-harbour:#b8aea3; color-scheme:dark;
+}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.4 var(--body);overflow:hidden}
+#map{position:fixed;inset:0;z-index:0;background:var(--bg)}
+@media (prefers-color-scheme:dark){.leaflet-tile-pane{filter:brightness(.72) invert(1) hue-rotate(180deg) saturate(.6) contrast(.9)}}
+
+.top{position:fixed;top:0;left:0;right:0;z-index:500;pointer-events:none;
+  padding:calc(env(safe-area-inset-top,0px) + 10px) max(12px,env(safe-area-inset-right,0px)) 0 max(12px,env(safe-area-inset-left,0px))}
+.brand{pointer-events:auto;display:inline-flex;align-items:baseline;gap:8px;background:var(--panel);
+  border:1px solid var(--line);border-radius:10px;padding:8px 12px;box-shadow:0 2px 10px rgb(0 0 0 / .12)}
+.brand h1{margin:0;font:800 19px/1 var(--display);font-stretch:80%;letter-spacing:.01em;text-transform:uppercase}
+.brand span{font-size:12px;color:var(--muted)}
+.chips{pointer-events:auto;display:flex;gap:6px;overflow-x:auto;margin-top:8px;padding-bottom:4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel);color:var(--fg);
+  font:600 12px/1 var(--body);padding:7px 10px;border-radius:999px;cursor:pointer;box-shadow:0 1px 4px rgb(0 0 0 / .08)}
+.chip i{width:10px;height:10px;border-radius:50%;display:block}
+.chip[aria-pressed="false"]{opacity:.45}
+
+.fab{position:fixed;z-index:500;right:max(12px,env(safe-area-inset-right,0px));
+  width:52px;height:52px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--fg);
+  display:grid;place-items:center;cursor:pointer;box-shadow:0 3px 12px rgb(0 0 0 / .2)}
+.fab svg{width:24px;height:24px}
+#locate{bottom:calc(var(--sheet-peek) + 16px)}
+#locate.on{color:var(--me)}
+#locate.follow{background:var(--me);color:#fff;border-color:var(--me)}
+:root{--sheet-peek:92px}
+
+.status{position:fixed;z-index:500;left:50%;transform:translateX(-50%);bottom:calc(var(--sheet-peek) + 80px);
+  background:var(--fg);color:var(--bg);font-size:13px;padding:8px 12px;border-radius:8px;max-width:calc(100% - 32px);text-align:center}
+
+.sheet{position:fixed;z-index:600;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);
+  border-radius:16px 16px 0 0;box-shadow:0 -6px 24px rgb(0 0 0 / .15);height:var(--sheet-peek);
+  transition:height .25s ease;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom,0px)}
+.sheet.open{height:62%}
+.handle{border:0;background:none;color:var(--fg);width:100%;cursor:pointer;
+  padding:8px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));text-align:left}
+.handle::before{content:"";display:block;width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 8px}
+.handle strong{font:700 15px/1.2 var(--display);font-stretch:85%;text-transform:uppercase;letter-spacing:.03em}
+.handle small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.list{overflow-y:auto;flex:1;padding:0 max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px));
+  list-style:none;margin:0}
+.list li{display:grid;grid-template-columns:30px 1fr auto;gap:10px;align-items:start;padding:10px 0;border-top:1px solid var(--line);cursor:pointer}
+.list li:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font:700 12px/1 var(--display);color:#fff}
+.num.dark{color:#14232e}
+.list b{font-weight:600;display:block}
+.list p{margin:2px 0 0;color:var(--muted);font-size:13px;min-width:0}
+.dist{font-variant-numeric:tabular-nums;font-size:12px;color:var(--accent);font-weight:600;white-space:nowrap;padding-top:4px}
+
+.pin{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font:700 11px/1 var(--display);color:#fff;
+  border:2px solid #fff;box-shadow:0 1px 4px rgb(0 0 0 / .4)}
+.pin.dark{color:#14232e}
+.pin.note{border-radius:6px;font-size:13px}
+.pin.circ{box-shadow:0 0 0 3px #fff,0 0 0 6px var(--c-notes),0 1px 6px rgb(0 0 0 / .4)}
+.num.circ{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--c-notes)}
+.tag{display:inline-block;margin-left:6px;font-size:11px;font-weight:600;color:var(--c-notes);text-transform:uppercase;letter-spacing:.05em}
+.leaflet-popup-content{font:14px/1.4 var(--body);margin:12px 14px}
+.leaflet-popup-content h3{margin:0 0 4px;font:700 15px/1.2 var(--display)}
+.leaflet-popup-content .cat{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#5d6e7a}
+.leaflet-popup-content a{color:#0f5c8f;font-weight:600}
+.me-dot{width:18px;height:18px;border-radius:50%;background:var(--me);border:3px solid #fff;box-shadow:0 0 0 2px rgb(26 115 232 / .35),0 1px 4px rgb(0 0 0 / .4)}
+.me-wrap{position:relative}
+.me-cone{position:absolute;left:50%;top:50%;width:0;height:0;margin-left:-14px;margin-top:-38px;
+  border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:30px solid rgb(26 115 232 / .35);transform-origin:14px 38px}
+@media (prefers-reduced-motion:reduce){.sheet{transition:none}}
+</style>
+</head>
+<body>
+<div id="map" role="application" aria-label="Map of Helsinki"></div>
+
+<div class="top">
+  <div class="brand"><h1>Helsinki</h1><span>62 spots · your notes &amp; walks</span></div>
+  <div class="chips" id="chips"></div>
+</div>
+
+<button class="fab" id="locate" aria-label="Show my location" title="Show my location">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>
+</button>
+<div class="status" id="status" hidden></div>
+
+<section class="sheet" id="sheet">
+  <button class="handle" id="handle" aria-expanded="false" aria-controls="list">
+    <strong>Places</strong><small id="summary">Tap to browse · turn on location to sort by distance</small>
+  </button>
+  <ul class="list" id="list"></ul>
+</section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const CATS = {
+  notes:   {label:"My notes",            color:"var(--c-notes)"},
+  classics:{label:"Classics",            color:"var(--c-classics)"},
+  culture: {label:"Culture & architecture", color:"var(--c-culture)"},
+  art:     {label:"Art & design",        color:"var(--c-art)"},
+  sauna:   {label:"Saunas",              color:"var(--c-sauna)", dark:true},
+  family:  {label:"Family fun",          color:"var(--c-family)", dark:true},
+  shop:    {label:"Shopping & food",     color:"var(--c-shop)", dark:true},
+  nature:  {label:"Nature & outdoors",   color:"var(--c-nature)"},
+  harbour: {label:"Harbours & venues",   color:"var(--c-harbour)"},
+};
+// [id, category, name, lat, lng, description]
+const P = [
+ ["✎","notes","Café Engel",60.17005,24.95245,"Your note. Classic café facing the Cathedral on Aleksanterinkatu."],
+ ["✎","notes","Café Succès",60.15985,24.94450,"Your note: salmon soup and cinnamon rolls. Korkeavuorenkatu 2 (your X by Jääkärinkatu)."],
+ ["✎","notes","Restaurant Karl Johan",60.16655,24.94050,"Your note. Traditional Finnish dining on Yrjönkatu (your X near Kamppi)."],
+ ["★","notes","Eläintarha park",60.18790,24.93320,"Circled on your map. Woodland park behind the Olympic Stadium."],
+ ["★","notes","Hietaniemi Beach",60.17080,24.90150,"Circled on your map. City beach on the west shore (Hietsu)."],
+ ["★","notes","Lapinlahti",60.16520,24.91280,"Circled on your map. Old hospital grounds and park by the water."],
+ ["★","notes","Kaivopuisto Park",60.15680,24.95640,"Circled on your map. Seaside park; playground at Puistokatu 4."],
+ ["★","notes","Laivasillankatu waterfront",60.16200,24.95330,"Circled on your map. Start of the walk to Café Succès."],
+ ["×","notes","Marked spot, Töölö",60.18420,24.92300,"You marked an X here near Mannerheimintie / Eino Leinon katu."],
+ [1,"classics","Helsinki Cathedral & Senate Square",60.17040,24.95220,"Lutheran cathedral, the city's silhouette since 1852."],
+ [2,"classics","Torikorttelit",60.16890,24.95150,"Historic blocks with restaurants, cafés and design shops."],
+ [3,"classics","Uspenski Cathedral",60.16840,24.95990,"Largest Orthodox church in Northern and Western Europe."],
+ [4,"classics","Esplanade Park",60.16760,24.94800,"Performances and Finnish brand stores: Marimekko, Iittala & Arabia, Aarikka."],
+ [5,"classics","Market Square & Sightseeing Cruises",60.16750,24.95320,"Open-air market. Cruises May–Sept."],
+ [6,"classics","Sibelius Monument & Park",60.18200,24.91330,"Eila Hiltunen's monument to Jean Sibelius, 1967."],
+ [7,"classics","Helsinki Olympic Stadium",60.18680,24.92710,"1952 Olympics venue, 72 m tower and Sports Museum TAHTO."],
+ [8,"culture","Kamppi Chapel",60.16950,24.93640,"Quiet wooden chapel in the middle of the city."],
+ [9,"culture","Central Library Oodi",60.17370,24.93810,"Striking public library for reading, events and making things."],
+ [10,"culture","Musiikkitalo",60.17260,24.93370,"Helsinki Music Centre, home of the Philharmonic."],
+ [11,"culture","Finlandia Hall",60.17580,24.93370,"Alvar Aalto's concert and congress hall."],
+ [12,"culture","National Museum of Finland",60.17470,24.93120,"Closed for renovation 2023–2027."],
+ [13,"culture","Temppeliaukio Rock Church",60.17300,24.92530,"Church carved into solid rock, 1969."],
+ [14,"culture","Finnish National Opera & Ballet",60.18210,24.93030,"Opera and ballet for all ages."],
+ [15,"art","Ateneum Art Museum",60.17010,24.94430,"Finnish classics and international masterpieces."],
+ [16,"art","Kiasma",60.17200,24.93710,"Museum of contemporary art."],
+ [17,"art","Amos Rex",60.17020,24.93640,"Private collection and contemporary shows under the domes."],
+ [18,"art","HAM Helsinki Art Museum",60.16900,24.93130,"City art collection, modern and contemporary."],
+ [19,"art","Architecture & Design Museum",60.16200,24.94650,"The story of Finnish architecture and design."],
+ [20,"art","Kunsthalle Helsinki",60.17350,24.93170,"Contemporary art, design and architecture."],
+ [21,"art","Sinebrychoff Art Museum",60.16130,24.93280,"Traditional European art in the Sinebrychoff home."],
+ [22,"art","Arabia Museum",60.20930,24.97880,"Arabia design brand, in its home neighbourhood. Trams 6 & 8."],
+ [23,"sauna","Allas Pool",60.16700,24.95680,"Sea pool and sauna by the Market Square."],
+ [24,"sauna","Uusi Sauna",60.15850,24.91380,"Modern neighbourhood sauna with bar and bistro."],
+ [25,"sauna","Löyly",60.15200,24.93830,"Wood-heated and smoke saunas, dip in the Baltic."],
+ [26,"sauna","Kotiharju Sauna",60.18540,24.95560,"Wood-heated neighbourhood sauna since 1928."],
+ [27,"sauna","Sauna Hermanni",60.19250,24.96900,"Traditional neighbourhood sauna from 1953."],
+ [28,"family","Helsinki City Museum",60.16910,24.95370,"City history; Children's Town exhibition."],
+ [29,"family","Paradox Museum",60.16860,24.95010,"Illusions and photo fun."],
+ [30,"family","Natural History Museum",60.17150,24.93140,"A journey through Finland's nature."],
+ [31,"family","Korkeasaari Zoo",60.17550,24.98500,"Lynx, brown bears, forest reindeer. Bus 16."],
+ [32,"family","Linnanmäki & SEA LIFE",60.18770,24.94100,"Amusement park (May–Oct), aquarium all year."],
+ [33,"shop","Old Market Hall",60.16620,24.95300,"Delicacies, restaurants and cafés since 1889."],
+ [34,"shop","Hakaniemi Market Hall",60.17900,24.95080,"Two floors of food, homeware and gifts."],
+ [35,"shop","Hietalahti Market Hall",60.16220,24.92960,"Café and restaurant hall."],
+ [36,"shop","Stockmann",60.16850,24.94130,"Department store with a good food market."],
+ [37,"shop","Kamppi Helsinki",60.16900,24.93300,"Mall, bus terminal and Kortteli food court."],
+ [38,"shop","Shopping Centre Forum",60.16900,24.93850,""],
+ [39,"shop","Sokos Department Store",60.17080,24.93990,""],
+ [40,"shop","REDI Shopping Centre",60.18720,24.97790,""],
+ [41,"shop","Mall of Tripla & Pasila Station",60.19850,24.93300,""],
+ [42,"nature","Suomenlinna Sea Fortress",60.14540,24.98810,"UNESCO World Heritage Site. Ferry from Market Square, all year."],
+ [43,"nature","Vallisaari & Lonna",60.13950,25.00350,"Waterbus May–Sep."],
+ [44,"nature","Uunisaari Island",60.15420,24.95020,"Sauna and beach. Pontoon bridge Nov–April."],
+ [45,"nature","Pihlajasaari Island",60.14000,24.91500,"Beaches and campfire sites. Waterbus May–Aug."],
+ [46,"nature","Töölönlahti Bay",60.17800,24.93700,"Jogging loop; Winter Garden at the north end."],
+ [47,"nature","Kaisaniemi Botanic Garden",60.17520,24.94640,"Garden and greenhouses, open all year."],
+ [48,"nature","Seurasaari Island & Open-Air Museum",60.18400,24.88400,"Island all year; museum May–Sep. Bus 24."],
+ [49,"harbour","Hernesaari B & C Quays",60.15000,24.92600,"Cruise ship quays."],
+ [50,"harbour","Hernesaari D Quay",60.14700,24.92350,"Cruise ship quay."],
+ [51,"harbour","Katajanokka Cruise Quays",60.16450,24.97300,""],
+ [52,"harbour","South Harbour",60.16400,24.95350,""],
+ [53,"harbour","West Terminal 2",60.14900,24.91450,"Tallink Silja and Eckerö Line to Tallinn."],
+ [54,"harbour","Olympia Terminal",60.15950,24.95530,"Tallink Silja to Stockholm."],
+ [55,"harbour","Katajanokka Terminal",60.16380,24.96500,"Viking Line to Tallinn and Stockholm."],
+ [56,"harbour","Messukeskus Expo & Convention Centre",60.20350,24.93680,""],
+ [57,"harbour","Kulttuurikasarmi",60.17050,24.93520,""],
+ [58,"harbour","Cable Factory & Dance House",60.16130,24.90550,""],
+ [59,"harbour","Korjaamo",60.18400,24.91550,""],
+ [60,"harbour","Vallilan Konepaja",60.19400,24.95100,""],
+ [61,"harbour","Teurastamo",60.18860,24.97180,""],
+ [62,"harbour","Suvilahti",60.18700,24.97000,""],
+];
+const EXTRA = [
+ ["i","Helsinki Tourist Information",60.16960,24.95180],
+ ["🚆","Helsinki Central Railway Station",60.17190,24.94140],
+];
+// Numbered spots you circled on the paper map
+const CIRCLED = new Set([1,2,4,6,7,9,10,13,25,28,29,31,42]);
+// Your hand-drawn walks (approximate)
+const WALKS = [
+ ["South shore walk","Kaivopuisto shoreline → Eira → Löyly",
+  [[60.1600,24.9520],[60.1570,24.9555],[60.1555,24.9540],[60.1560,24.9470],[60.1565,24.9420],[60.1560,24.9380],[60.1555,24.9340],[60.1530,24.9360],[60.1520,24.9383]]],
+ ["Café Succès walk","Market Square → Laivasillankatu → Tähtitorninkatu → Café Succès",
+  [[60.1675,24.9532],[60.1650,24.9535],[60.1620,24.9533],[60.1607,24.9510],[60.1603,24.9480],[60.1599,24.9450]]],
+ ["West shore walk","Sibelius Monument → Hietaniemi Beach → Lapinlahti",
+  [[60.1820,24.9133],[60.1795,24.9100],[60.1765,24.9065],[60.1735,24.9035],[60.1708,24.9015],[60.1690,24.9045],[60.1672,24.9080],[60.1652,24.9128]]],
+];
+
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v.slice(4,-1)).trim();
+const map = L.map('map',{zoomControl:false,attributionControl:true}).setView([60.1680,24.9420],14);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+L.control.zoom({position:'topright'}).addTo(map);
+const walkLayer=L.layerGroup().addTo(map);
+WALKS.forEach(([n,d,pts])=>L.polyline(pts,{color:css('var(--c-notes)'),weight:4,dashArray:'6 8',opacity:.85})
+  .bindPopup(`<span class="cat">My notes</span><h3>${n}</h3>${d}. Traced from your pen line, so approximate.`).addTo(walkLayer));
+
+const layers = {}; const markers = new Map();
+Object.keys(CATS).forEach(k=>layers[k]=L.layerGroup().addTo(map));
+const gmaps = (lat,lng)=>`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
+P.forEach(p=>{
+  const [id,cat,name,lat,lng,desc]=p, c=CATS[cat];
+  const icon=L.divIcon({className:'',iconSize:[26,26],iconAnchor:[13,13],
+    html:`<div class="pin ${c.dark?'dark':''} ${cat==='notes'?'note':''} ${CIRCLED.has(id)?'circ':''}" style="background:${css(c.color)}">${id}</div>`});
+  const m=L.marker([lat,lng],{icon,title:name}).bindPopup(
+    `<span class="cat">${c.label}</span><h3>${typeof id==='number'?id+'. ':''}${name}</h3>${CIRCLED.has(id)?'<b style="color:#6b3fa0">Circled on your map.</b> ':''}${desc?desc+'<br>':''}<a href="${gmaps(lat,lng)}" target="_blank" rel="noopener">Walking directions ↗</a>`);
+  m.addTo(layers[cat]); markers.set(p,m);
+});
+EXTRA.forEach(([s,name,lat,lng])=>L.marker([lat,lng],{icon:L.divIcon({className:'',iconSize:[26,26],iconAnchor:[13,13],
+  html:`<div class="pin" style="background:${css('var(--accent)')}">${s}</div>`})}).bindPopup(`<h3>${name}</h3>`).addTo(map));
+
+// Category chips
+const active=new Set(Object.keys(CATS));
+const chips=document.getElementById('chips');
+Object.entries(CATS).forEach(([k,c])=>{
+  const b=document.createElement('button');b.className='chip';b.setAttribute('aria-pressed','true');
+  b.innerHTML=`<i style="background:${c.color}"></i>${c.label}`;
+  b.onclick=()=>{const on=active.has(k);on?active.delete(k):active.add(k);b.setAttribute('aria-pressed',String(!on));
+    on?map.removeLayer(layers[k]):layers[k].addTo(map);
+    if(k==='notes'){on?map.removeLayer(walkLayer):walkLayer.addTo(map);}renderList();};
+  chips.appendChild(b);
+});
+
+// List
+let me=null;
+const dist=(a,b,c,d)=>{const R=6371e3,t=Math.PI/180,x=(c-a)*t,y=(d-b)*t,h=Math.sin(x/2)**2+Math.cos(a*t)*Math.cos(c*t)*Math.sin(y/2)**2;return 2*R*Math.asin(Math.sqrt(h));};
+const fmt=m=>m<1000?`${Math.round(m/10)*10} m`:`${(m/1000).toFixed(1)} km`;
+const walk=m=>`${Math.max(1,Math.round(m/80))} min`;
+const listEl=document.getElementById('list');
+function renderList(){
+  let rows=P.filter(p=>active.has(p[1]));
+  if(me) rows=rows.map(p=>[p,dist(me.lat,me.lng,p[3],p[4])]).sort((a,b)=>a[1]-b[1]);
+  else rows=rows.map(p=>[p,null]);
+  listEl.innerHTML='';
+  rows.forEach(([p,d])=>{
+    const c=CATS[p[1]],li=document.createElement('li');li.tabIndex=0;
+    li.innerHTML=`<span class="num ${c.dark?'dark':''} ${CIRCLED.has(p[0])?'circ':''}" style="background:${c.color}">${p[0]}</span>
+      <div style="min-width:0"><b>${p[2]}${CIRCLED.has(p[0])?'<span class="tag">circled</span>':''}</b>${p[5]?`<p>${p[5]}</p>`:''}</div>
+      <span class="dist">${d!=null?fmt(d)+'<br>'+walk(d):''}</span>`;
+    const go=()=>{setFollow(false);map.flyTo([p[3],p[4]],16);markers.get(p).openPopup();toggleSheet(false);};
+    li.onclick=go;li.onkeydown=e=>{if(e.key==='Enter')go();};
+    listEl.appendChild(li);
+  });
+  document.getElementById('summary').textContent = me
+    ? `Nearest: ${rows[0]?rows[0][0][2]+' · '+fmt(rows[0][1]):'—'}`
+    : `${rows.length} places · turn on location to sort by distance`;
+}
+renderList();
+
+const sheet=document.getElementById('sheet'),handle=document.getElementById('handle');
+function toggleSheet(force){const open=force??!sheet.classList.contains('open');sheet.classList.toggle('open',open);handle.setAttribute('aria-expanded',open);}
+handle.onclick=()=>toggleSheet();
+
+// Live location
+const btn=document.getElementById('locate'),statusEl=document.getElementById('status');
+let watchId=null,meMarker=null,accCircle=null,follow=false,heading=null,first=true;
+function say(t,ms=3500){statusEl.textContent=t;statusEl.hidden=false;clearTimeout(say.t);say.t=setTimeout(()=>statusEl.hidden=true,ms);}
+function setFollow(f){follow=f;btn.classList.toggle('follow',f);}
+function meIcon(){return L.divIcon({className:'',iconSize:[18,18],iconAnchor:[9,9],
+  html:`<div class="me-wrap">${heading!=null?`<div class="me-cone" style="transform:rotate(${heading}deg)"></div>`:''}<div class="me-dot"></div></div>`});}
+function onPos(pos){
+  const {latitude:lat,longitude:lng,accuracy,heading:h}=pos.coords;
+  if(h!=null&&!isNaN(h)&&pos.coords.speed>0.5) heading=h;
+  me={lat,lng};
+  if(!meMarker){meMarker=L.marker([lat,lng],{icon:meIcon(),zIndexOffset:1000,interactive:false}).addTo(map);
+    accCircle=L.circle([lat,lng],{radius:accuracy,color:css('var(--me)'),weight:1,fillOpacity:.1}).addTo(map);}
+  else{meMarker.setLatLng([lat,lng]);meMarker.setIcon(meIcon());accCircle.setLatLng([lat,lng]).setRadius(accuracy);}
+  if(first){first=false;map.setView([lat,lng],16);setFollow(true);
+    if(dist(lat,lng,60.168,24.942)>20000) say('You look far from Helsinki — the map will still follow you.',5000);}
+  else if(follow) map.panTo([lat,lng],{animate:true});
+  renderList();
+}
+function onErr(e){
+  const msg={1:'Location permission was denied. Allow it in your browser\'s site settings, then tap again.',
+             2:'Your position is unavailable right now. Try moving near a window or outdoors.',
+             3:'Getting your location took too long. Tap to try again.'}[e.code]||'Location failed.';
+  say(msg,6000); if(e.code===1) stop();
+}
+function stop(){if(watchId!=null)navigator.geolocation.clearWatch(watchId);watchId=null;btn.classList.remove('on');setFollow(false);}
+btn.onclick=()=>{
+  if(!('geolocation' in navigator)){say('This browser has no location support.');return;}
+  if(watchId==null){
+    if(!window.isSecureContext) say('Location needs an https:// page. Open this file from a secure address.',6000);
+    btn.classList.add('on');say('Finding you…',2000);first=true;
+    watchId=navigator.geolocation.watchPosition(onPos,onErr,{enableHighAccuracy:true,maximumAge:5000,timeout:20000});
+  } else if(!follow && me){setFollow(true);map.flyTo([me.lat,me.lng],Math.max(map.getZoom(),16));}
+  else stop();
+};
+map.on('dragstart',()=>setFollow(false));
+// Compass heading when standing still (Android Chrome)
+window.addEventListener('deviceorientationabsolute',e=>{if(e.alpha!=null&&meMarker){heading=360-e.alpha;meMarker.setIcon(meIcon());}},true);
+// Keep the screen awake while following
+btn.addEventListener('click',async()=>{try{if(watchId!=null&&'wakeLock' in navigator)await navigator.wakeLock.request('screen');}catch(_){}});
+</script>
+</body>
+</html>
