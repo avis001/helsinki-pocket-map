@@ -84,6 +84,7 @@ body{background:var(--bg);color:var(--fg);font:15px/1.4 var(--body);overflow:hid
 .leaflet-popup-content h3{margin:0 0 4px;font:700 15px/1.2 var(--display)}
 .leaflet-popup-content .cat{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#5d6e7a}
 .leaflet-popup-content a{color:#0f5c8f;font-weight:600}
+.leaflet-popup-content .links{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px}
 .me-dot{width:18px;height:18px;border-radius:50%;background:var(--me);border:3px solid #fff;box-shadow:0 0 0 2px rgb(26 115 232 / .35),0 1px 4px rgb(0 0 0 / .4)}
 .me-wrap{position:relative}
 .me-cone{position:absolute;left:50%;top:50%;width:0;height:0;margin-left:-14px;margin-top:-38px;
@@ -224,13 +225,14 @@ WALKS.forEach(([n,d,pts])=>L.polyline(pts,{color:css('var(--c-notes)'),weight:4,
 
 const layers = {}; const markers = new Map();
 Object.keys(CATS).forEach(k=>layers[k]=L.layerGroup().addTo(map));
+const gplace = name=>`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name+', Helsinki')}`;
 const gmaps = (lat,lng)=>`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
 P.forEach(p=>{
   const [id,cat,name,lat,lng,desc]=p, c=CATS[cat];
   const icon=L.divIcon({className:'',iconSize:[26,26],iconAnchor:[13,13],
     html:`<div class="pin ${c.dark?'dark':''} ${cat==='notes'?'note':''} ${CIRCLED.has(id)?'circ':''}" style="background:${css(c.color)}">${id}</div>`});
   const m=L.marker([lat,lng],{icon,title:name}).bindPopup(
-    `<span class="cat">${c.label}</span><h3>${typeof id==='number'?id+'. ':''}${name}</h3>${CIRCLED.has(id)?'<b style="color:#6b3fa0">Circled on your map.</b> ':''}${desc?desc+'<br>':''}<a href="${gmaps(lat,lng)}" target="_blank" rel="noopener">Walking directions ↗</a>`);
+    `<span class="cat">${c.label}</span><h3>${typeof id==='number'?id+'. ':''}${name}</h3>${CIRCLED.has(id)?'<b style="color:#6b3fa0">Circled on your map.</b> ':''}${desc?desc+'<br>':''}<div class="links"><a href="${gmaps(lat,lng)}" target="_blank" rel="noopener">Walking directions ↗</a><a href="${gplace(name)}" target="_blank" rel="noopener">Reviews on Google ↗</a></div>`);
   m.addTo(layers[cat]); markers.set(p,m);
 });
 EXTRA.forEach(([s,name,lat,lng])=>L.marker([lat,lng],{icon:L.divIcon({className:'',iconSize:[26,26],iconAnchor:[13,13],
