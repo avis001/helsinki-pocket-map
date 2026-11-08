@@ -14,7 +14,7 @@
   --bg:#f5f7f8; --panel:#ffffff; --fg:#14232e; --muted:#5d6e7a; --line:#dde4e8;
   --accent:#0f5c8f; --me:#1a73e8;
   --c-classics:#e03a2f; --c-culture:#1f4fb3; --c-art:#d96aa0; --c-sauna:#e4a422;
-  --c-family:#f1cc1c; --c-shop:#7fa6d8; --c-nature:#4f9a5b; --c-harbour:#3a3530; --c-notes:#6b3fa0;
+  --c-family:#f1cc1c; --c-shop:#7fa6d8; --c-nature:#4f9a5b; --c-harbour:#3a3530; --c-notes:#6b3fa0; --c-plan:#0b8576;
   --display:"Archivo","Arial Narrow",system-ui,sans-serif;
   --body:"Inter Tight",system-ui,-apple-system,"Segoe UI",sans-serif;
   color-scheme:light;
@@ -115,6 +115,7 @@ body{background:var(--bg);color:var(--fg);font:15px/1.4 var(--body);overflow:hid
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 const CATS = {
+  plan:    {label:"Mon 9 Nov plan",      color:"var(--c-plan)"},
   notes:   {label:"My notes",            color:"var(--c-notes)"},
   classics:{label:"Classics",            color:"var(--c-classics)"},
   culture: {label:"Culture & architecture", color:"var(--c-culture)"},
@@ -127,6 +128,11 @@ const CATS = {
 };
 // [id, category, name, lat, lng, description]
 const P = [
+ ["A","plan","Temppeliaukio Church",60.17300,24.92530,"Mon 10:00–10:45. Copper dome, exposed rock, natural light."],
+ ["B","plan","Huvilakatu",60.15745,24.94580,"Mon 11:15–12:00. Pastel Art Nouveau houses; quick photo stop. About 30 min walk from the church."],
+ ["C","plan","Old Market Hall",60.16620,24.95300,"Mon 12:15–13:15. Finnish food stalls and pastries; snack here, lunch later. Open Mon–Sat 8–18."],
+ ["D","plan","Helsinki Central Railway Station",60.17190,24.94140,"Mon 14:00–15:00. Stone lantern-bearers and clock tower, then a café nearby."],
+ ["+","plan","Kamppi Chapel of Silence",60.16950,24.93640,"Optional extra. Curved wooden chapel; a short visit is enough."],
  ["✎","notes","Café Engel",60.17005,24.95245,"Your note. Classic café facing the Cathedral on Aleksanterinkatu."],
  ["✎","notes","Café Succès",60.15985,24.94450,"Your note: salmon soup and cinnamon rolls. Korkeavuorenkatu 2 (your X by Jääkärinkatu)."],
  ["✎","notes","Restaurant Karl Johan",60.16655,24.94050,"Your note. Traditional Finnish dining on Yrjönkatu (your X near Kamppi)."],
@@ -206,6 +212,10 @@ const EXTRA = [
 // Numbered spots you circled on the paper map
 const CIRCLED = new Set([1,2,4,6,7,9,10,13,25,28,29,31,42]);
 // Your hand-drawn walks (approximate)
+const PLAN_ROUTE = [[60.1730,24.9253],[60.1715,24.9300],[60.1690,24.9385],[60.1660,24.9430],[60.1620,24.9450],[60.1590,24.9455],[60.15745,24.9458],
+  [60.1590,24.9475],[60.1625,24.9500],[60.1650,24.9525],[60.1662,24.9530],
+  [60.1680,24.9500],[60.1700,24.9460],[60.1719,24.9414],
+  [60.1708,24.9395],[60.1695,24.9364]];
 const WALKS = [
  ["South shore walk","Kaivopuisto shoreline → Eira → Löyly",
   [[60.1600,24.9520],[60.1570,24.9555],[60.1555,24.9540],[60.1560,24.9470],[60.1565,24.9420],[60.1560,24.9380],[60.1555,24.9340],[60.1530,24.9360],[60.1520,24.9383]]],
@@ -219,6 +229,8 @@ const css = v => getComputedStyle(document.documentElement).getPropertyValue(v.s
 const map = L.map('map',{zoomControl:false,attributionControl:true}).setView([60.1680,24.9420],14);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
 L.control.zoom({position:'topright'}).addTo(map);
+const planRoute=L.polyline(PLAN_ROUTE,{color:css('var(--c-plan)'),weight:5,opacity:.9})
+  .bindPopup('<span class="cat">Mon 9 Nov plan</span><h3>Monday route</h3>Rock Church → Huvilakatu → Old Market Hall → Railway Station → Kamppi Chapel. Roughly 5 km on foot in total.').addTo(map);
 const walkLayer=L.layerGroup().addTo(map);
 WALKS.forEach(([n,d,pts])=>L.polyline(pts,{color:css('var(--c-notes)'),weight:4,dashArray:'6 8',opacity:.85})
   .bindPopup(`<span class="cat">My notes</span><h3>${n}</h3>${d}. Traced from your pen line, so approximate.`).addTo(walkLayer));
@@ -230,8 +242,8 @@ const gmaps = (lat,lng)=>`https://www.google.com/maps/dir/?api=1&destination=${l
 P.forEach(p=>{
   const [id,cat,name,lat,lng,desc]=p, c=CATS[cat];
   const icon=L.divIcon({className:'',iconSize:[26,26],iconAnchor:[13,13],
-    html:`<div class="pin ${c.dark?'dark':''} ${cat==='notes'?'note':''} ${CIRCLED.has(id)?'circ':''}" style="background:${css(c.color)}">${id}</div>`});
-  const m=L.marker([lat,lng],{icon,title:name}).bindPopup(
+    html:`<div class="pin ${c.dark?'dark':''} ${cat==='notes'||cat==='plan'?'note':''} ${CIRCLED.has(id)?'circ':''}" style="background:${css(c.color)}">${id}</div>`});
+  const m=L.marker([lat,lng],{icon,title:name,zIndexOffset:cat==='plan'?800:0}).bindPopup(
     `<span class="cat">${c.label}</span><h3>${typeof id==='number'?id+'. ':''}${name}</h3>${CIRCLED.has(id)?'<b style="color:#6b3fa0">Circled on your map.</b> ':''}${desc?desc+'<br>':''}<div class="links"><a href="${gmaps(lat,lng)}" target="_blank" rel="noopener">Walking directions ↗</a><a href="${gplace(name)}" target="_blank" rel="noopener">Reviews on Google ↗</a></div>`);
   m.addTo(layers[cat]); markers.set(p,m);
 });
@@ -246,7 +258,8 @@ Object.entries(CATS).forEach(([k,c])=>{
   b.innerHTML=`<i style="background:${c.color}"></i>${c.label}`;
   b.onclick=()=>{const on=active.has(k);on?active.delete(k):active.add(k);b.setAttribute('aria-pressed',String(!on));
     on?map.removeLayer(layers[k]):layers[k].addTo(map);
-    if(k==='notes'){on?map.removeLayer(walkLayer):walkLayer.addTo(map);}renderList();};
+    if(k==='notes'){on?map.removeLayer(walkLayer):walkLayer.addTo(map);}
+    if(k==='plan'){on?map.removeLayer(planRoute):planRoute.addTo(map);}renderList();};
   chips.appendChild(b);
 });
 
