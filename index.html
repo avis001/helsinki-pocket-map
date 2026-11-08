@@ -119,7 +119,7 @@ body{background:var(--bg);color:var(--fg);font:15px/1.4 var(--body);overflow:hid
 <div id="map" role="application" aria-label="Map of Helsinki"></div>
 
 <div class="top">
-  <div class="brand"><h1>Helsinki</h1><span>62 spots · your notes &amp; plan</span></div>
+  <div class="brand"><h1>Helsinki</h1><span>62 spots · your notes &amp; walks</span></div>
   <div class="chips" id="chips"></div>
 </div>
 
@@ -139,7 +139,6 @@ body{background:var(--bg);color:var(--fg);font:15px/1.4 var(--body);overflow:hid
 <script>
 // ---------- Layers (spec order and colours) ----------
 const CATS = {
-  plan:    {label:"Monday itinerary",        color:"var(--c-plan)"},
   notes:   {label:"My notes & saved spots",  color:"var(--c-notes)"},
   classics:{label:"Classics & landmarks",    color:"var(--c-classics)"},
   culture: {label:"Culture & architecture",  color:"var(--c-culture)"},
@@ -227,23 +226,10 @@ const P = [
  // Neutral utility markers (always shown)
  ["info","i","utility","Helsinki Tourist Information",60.16960,24.95180,""],
  ["station","🚆","utility","Helsinki Central Railway Station",60.17190,24.94140,"Stone lantern-bearers and clock tower."],
- // Itinerary-only place (no permanent category); shown with the Monday layer
- ["huvila","B","plan","Huvilakatu",60.15745,24.94580,"Pastel Art Nouveau houses; a quick photo stop."],
 ];
 const CIRCLED = new Set(["p1","p2","p4","p6","p7","p9","p10","p13","p25","p28","p29","p31","p42"]);
 
-// ---------- Monday overlay: references existing pins ----------
-const PLAN = [
- {stop:"A",time:"10:00–10:45",key:"p13",  text:"Copper dome, exposed rock, natural light."},
- {stop:"B",time:"11:15–12:00",key:"huvila",text:"Quick photography stop. About 30 min walk from the church."},
- {stop:"C",time:"12:15–13:15",key:"p33",  text:"Food stalls and pastries; snack here, lunch later."},
- {stop:"D",time:"14:00–15:00",key:"station",text:"Photograph the stone figures and clock tower, then a café nearby."},
- {stop:"+",time:"Optional",   key:"p8",   text:"Short visit; great for minimalist photos."},
-];
-const PLAN_ROUTE = [[60.1730,24.9253],[60.1715,24.9300],[60.1690,24.9385],[60.1660,24.9430],[60.1620,24.9450],[60.1590,24.9455],[60.15745,24.9458],
-  [60.1590,24.9475],[60.1625,24.9500],[60.1650,24.9525],[60.1662,24.9530],
-  [60.1680,24.9500],[60.1700,24.9460],[60.1719,24.9414],
-  [60.1708,24.9395],[60.1695,24.9364]];
+const PLAN = [];
 const WALKS = [
  ["South shore to Löyly","Kaivopuisto shoreline → Eira → Löyly",
   [[60.1600,24.9520],[60.1570,24.9555],[60.1555,24.9540],[60.1560,24.9470],[60.1565,24.9420],[60.1560,24.9380],[60.1555,24.9340],[60.1530,24.9360],[60.1520,24.9383]]],
@@ -290,7 +276,6 @@ L.control.zoom({position:'topright'}).addTo(map);
 const layers = {}; Object.keys(CATS).forEach(k=>layers[k]=L.layerGroup().addTo(map));
 const utilLayer = L.layerGroup().addTo(map);
 const walkLayer = L.layerGroup();      // shown with "notes"
-const planLayer = L.layerGroup();      // route + badges, shown with "plan"
 const markers = {};
 
 function pinIcon(p){
@@ -322,21 +307,8 @@ P.forEach(p=>{
   const m=L.marker([lat,lng],{icon:pinIcon(p),title:name,zIndexOffset:planOf[key]?600:0}).bindPopup(()=>popup(p));
   markers[key]=m;
   if(cat==='utility') m.addTo(utilLayer);
-  else if(cat==='plan') m.addTo(planLayer);   // itinerary-only place
   else m.addTo(layers[cat]);
 });
-// Monday overlay: route line + a badge above each referenced pin (no duplicate pins)
-L.polyline(PLAN_ROUTE,{color:css('var(--c-plan)'),weight:5,opacity:.9})
-  .bindPopup('<span class="cat">Monday itinerary</span><h3>Monday route</h3>Temppeliaukio → Huvilakatu → Old Market Hall → Railway Station → Kamppi Chapel. About 5 km on foot.')
-  .addTo(planLayer);
-PLAN.forEach(s=>{
-  const p=byKey[s.key]; if(s.key==='huvila') return;
-  L.marker([p[4],p[5]],{zIndexOffset:900,
-    icon:L.divIcon({className:'',iconSize:null,iconAnchor:[-8,30],
-      html:`<div class="badge">${s.stop}<span>${s.stop==='+'?'optional':s.time.split('–')[0]}</span></div>`})})
-   .on('click',()=>markers[s.key].openPopup()).addTo(planLayer);
-});
-planLayer.addTo(map);
 WALKS.forEach(([n,d,pts])=>L.polyline(pts,{color:css('var(--c-notes)'),weight:4,dashArray:'6 8',opacity:.9})
   .bindPopup(`<span class="cat">Saved walk</span><h3>${n}</h3>${d}. Traced from your pen line, so approximate.`).addTo(walkLayer));
 walkLayer.addTo(map);
@@ -363,7 +335,7 @@ const focusChip=document.createElement('button');focusChip.className='chip focus
 focusChip.innerHTML='<i></i>9 Nov Plan';chips.appendChild(focusChip);
 function applyLayers(){
   Object.keys(CATS).forEach(k=>{
-    const on=!focus&&active.has(k), lyr=k==='plan'?planLayer:layers[k];
+    const on=!focus&&active.has(k), lyr=layers[k];
     on?lyr.addTo(map):map.removeLayer(lyr);
     chipEls[k].setAttribute('aria-pressed',String(on));
   });
