@@ -43,6 +43,11 @@ body{background:var(--bg);color:var(--fg);font:15px/1.4 var(--body);overflow:hid
   font:600 12px/1 var(--body);padding:7px 10px;border-radius:999px;cursor:pointer;box-shadow:0 1px 4px rgb(0 0 0 / .08)}
 .chip i{width:10px;height:10px;border-radius:50%;display:block}
 .chip[aria-pressed="false"]{opacity:.45}
+.chip.focus{background:var(--c-plan);color:#fff;border-color:var(--c-plan)}
+.chip.focus[aria-pressed="false"]{opacity:1;background:var(--panel);color:var(--c-plan);border-color:var(--c-plan)}
+.chip.focus i{background:#fff!important;border:2px solid var(--c-plan)}
+.list li.step{grid-template-columns:34px 1fr auto}
+.list .time{font-size:12px;color:var(--c-plan);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 
 .fab{position:fixed;z-index:500;right:max(12px,env(safe-area-inset-right,0px));
   width:52px;height:52px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--fg);
@@ -248,6 +253,23 @@ const WALKS = [
   [[60.1820,24.9133],[60.1795,24.9100],[60.1765,24.9065],[60.1735,24.9035],[60.1708,24.9015],[60.1690,24.9045],[60.1672,24.9080],[60.1652,24.9128]]],
 ];
 
+// ---------- 9 Nov Plan (focus mode: hides every other layer) ----------
+const HOTEL=[60.16650,24.93780];
+const FOCUS = [
+ {n:"H",name:"Scandic Helsinki Hub",what:"Start",note:"Annankatu 18. Check out and leave luggage.",at:HOTEL},
+ {n:1,name:"Temppeliaukio Church",what:"Visit",note:"Copper dome and exposed rock. Check the church site for closures.",at:[60.17300,24.92530]},
+ {n:2,name:"Kamppi Chapel of Silence",what:"Exterior",note:"Photograph the curved wooden shell from Narinkka square.",at:[60.16950,24.93640]},
+ {n:3,name:"Old Market Hall",what:"Lunch",note:"Food stalls and soup counters. Open Mon–Sat 8–18.",at:[60.16620,24.95300]},
+ {n:4,name:"Oodi Central Library",what:"Play & photos",note:"Top-floor 'book heaven' and the children's area on the 3rd floor.",at:[60.17370,24.93810]},
+ {n:5,name:"Coffee",what:"Coffee break",note:"Café Oodi on Oodi's ground floor, or a café on the way to the station.",at:null},
+ {n:6,name:"Central Railway Station",what:"Photos",note:"Stone lantern-bearers and the clock tower.",at:[60.17190,24.94140]},
+ {n:"H",name:"Scandic Helsinki Hub",what:"Pick up luggage",note:"Back to the hotel for your bags.",at:HOTEL,end:true},
+];
+const FOCUS_ROUTE=[HOTEL,[60.1690,24.9330],[60.1715,24.9290],[60.17300,24.92530],[60.1712,24.9300],[60.16950,24.93640],
+  [60.1683,24.9420],[60.1676,24.9480],[60.1672,24.9520],[60.16620,24.95300],[60.1676,24.9480],[60.1700,24.9440],[60.1718,24.9395],[60.17370,24.93810],
+  [60.17190,24.94140],[60.1700,24.9405],[60.1680,24.9390],HOTEL];
+let focus=false, savedActive=null;
+
 // ---------- Helpers ----------
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v.slice(4,-1)).trim();
 const byKey = Object.fromEntries(P.map(p=>[p[0],p]));
@@ -318,19 +340,50 @@ planLayer.addTo(map);
 WALKS.forEach(([n,d,pts])=>L.polyline(pts,{color:css('var(--c-notes)'),weight:4,dashArray:'6 8',opacity:.9})
   .bindPopup(`<span class="cat">Saved walk</span><h3>${n}</h3>${d}. Traced from your pen line, so approximate.`).addTo(walkLayer));
 walkLayer.addTo(map);
+const focusLayer=L.layerGroup(); const focusMarkers={};
+L.polyline(FOCUS_ROUTE,{color:css('var(--c-plan)'),weight:6,opacity:.95})
+  .bindPopup('<span class="cat">9 Nov Plan</span><h3>Today\'s route</h3>Hotel → Temppeliaukio → Kamppi Chapel → Old Market Hall → Oodi → coffee → Central Station → hotel. About 5.5 km on foot.')
+  .addTo(focusLayer);
+FOCUS.forEach((f,i)=>{ if(!f.at||f.end) return;
+  const icon=L.divIcon({className:'',iconSize:[30,30],iconAnchor:[15,15],
+    html:`<div class="pin sq" style="width:30px;height:30px;font-size:14px;background:${css('var(--c-plan)')}">${f.n}</div>`});
+  const el=()=>{const d=document.createElement('div');
+    d.innerHTML=`<span class="cat">9 Nov Plan · ${f.n==='H'?'Start & end':'Stop '+f.n}</span><h3>${f.name}</h3><b>${f.what}${f.n==='H'?' · then back here for luggage':''}</b><br>${f.note}`+
+      (f.n===4?'<div class="planline"><b>Then 5 · Coffee</b><br>Café Oodi on the ground floor.</div>':'')+
+      `<div class="links"><a href="${gmaps(f.at[0],f.at[1])}" target="_blank" rel="noopener">Walking directions ↗</a><a href="${gplace(f.name)}" target="_blank" rel="noopener">Reviews on Google ↗</a></div>`;
+    return d;};
+  focusMarkers[i]=L.marker(f.at,{icon,zIndexOffset:950,title:f.name}).bindPopup(el).addTo(focusLayer);
+});
 
 // ---------- Layer chips ----------
 const active=new Set(Object.keys(CATS));
 const chips=document.getElementById('chips');
+const chipEls={};
+const focusChip=document.createElement('button');focusChip.className='chip focus';focusChip.setAttribute('aria-pressed','false');
+focusChip.innerHTML='<i></i>9 Nov Plan';chips.appendChild(focusChip);
+function applyLayers(){
+  Object.keys(CATS).forEach(k=>{
+    const on=!focus&&active.has(k), lyr=k==='plan'?planLayer:layers[k];
+    on?lyr.addTo(map):map.removeLayer(lyr);
+    chipEls[k].setAttribute('aria-pressed',String(on));
+  });
+  (!focus&&active.has('notes'))?walkLayer.addTo(map):map.removeLayer(walkLayer);
+  focus?map.removeLayer(utilLayer):utilLayer.addTo(map);
+  focus?focusLayer.addTo(map):map.removeLayer(focusLayer);
+  focusChip.setAttribute('aria-pressed',String(focus));
+  renderList();
+}
+function setFocus(on){
+  focus=on;
+  if(on){map.closePopup();map.fitBounds(L.latLngBounds(FOCUS_ROUTE),{paddingTopLeft:[30,110],paddingBottomRight:[30,120]});}
+  applyLayers();
+}
+focusChip.onclick=()=>setFocus(!focus);
 Object.entries(CATS).forEach(([k,c])=>{
   const b=document.createElement('button');b.className='chip';b.setAttribute('aria-pressed','true');
   b.innerHTML=`<i style="background:${c.color}"></i>${c.label}`;
-  b.onclick=()=>{const on=active.has(k);on?active.delete(k):active.add(k);b.setAttribute('aria-pressed',String(!on));
-    const lyr = k==='plan'?planLayer:layers[k];
-    on?map.removeLayer(lyr):lyr.addTo(map);
-    if(k==='notes'){on?map.removeLayer(walkLayer):walkLayer.addTo(map);}
-    renderList();};
-  chips.appendChild(b);
+  b.onclick=()=>{ if(focus){focus=false;} else {active.has(k)?active.delete(k):active.add(k);} applyLayers(); };
+  chipEls[k]=b; chips.appendChild(b);
 });
 
 // ---------- List ----------
@@ -342,7 +395,23 @@ const listEl=document.getElementById('list');
 function shown(p){const cat=p[2];
   if(cat==='utility') return planOf[p[0]]&&active.has('plan');
   return active.has(cat) || (planOf[p[0]]&&active.has('plan'));}
+function renderFocusList(){
+  listEl.innerHTML='';
+  FOCUS.forEach((f,i)=>{
+    const li=document.createElement('li');li.className='step';li.tabIndex=0;
+    const d=me&&f.at?dist(me.lat,me.lng,f.at[0],f.at[1]):null;
+    li.innerHTML=`<span class="num sq" style="background:var(--c-plan)">${f.n}</span>
+      <div style="min-width:0"><span class="time">${f.what}</span><b>${f.name}</b><p>${f.note}</p></div>
+      <span class="dist">${d!=null?fmt(d)+'<br>'+walkMin(d):''}</span>`;
+    const target=f.at||FOCUS[4].at, mk=focusMarkers[f.at?(f.end?0:i):4];
+    const go=()=>{setFollow(false);map.flyTo(target,16);setTimeout(()=>mk&&mk.openPopup(),400);toggleSheet(false);};
+    li.onclick=go;li.onkeydown=e=>{if(e.key==='Enter')go();};
+    listEl.appendChild(li);
+  });
+  document.getElementById('summary').textContent='9 Nov Plan · 7 stops, hotel to hotel · tap the chip again to show everything';
+}
 function renderList(){
+  if(focus) return renderFocusList();
   let rows=P.filter(shown);
   if(me) rows=rows.map(p=>[p,dist(me.lat,me.lng,p[4],p[5])]).sort((a,b)=>a[1]-b[1]);
   else{
