@@ -248,25 +248,29 @@ const WALKS = [
 // ---------- 9 Nov Plan (focus mode: hides every other layer) ----------
 const HOTEL=[60.16650,24.93780];
 const FOCUS = [
- {n:"H",t:"10:00",name:"Scandic Helsinki Hub",what:"Start",note:"Annankatu 18. Check out, leave luggage, walk 15 min.",at:HOTEL},
- {n:1,t:"10:15–10:50",name:"Temppeliaukio Church",what:"Visit",note:"Open 09:00–16:00 today. Copper dome and exposed rock. €8 entry.",at:[60.17300,24.92530]},
- {n:2,t:"11:10",name:"Sibelius Monument",what:"Photo stop",note:"Quick photo on the way to Regatta.",at:[60.18200,24.91330]},
- {n:3,t:"11:20–12:10",name:"Café Regatta",what:"Coffee & cinnamon bun",note:"Merikannontie 8. Open daily 09:00–21:00. Little red cottage on the water.",at:[60.18136,24.90989]},
- {n:4,t:"12:25",name:"Hietaniemi Beach",what:"Shore walk",note:"Walk south along your traced west shore route.",at:[60.17080,24.90150]},
- {n:5,t:"12:45",name:"Lapinlahti",what:"Shore walk",note:"Old hospital grounds by the water, then head into Kamppi.",at:[60.16520,24.91280]},
- {n:6,t:"13:00–13:15",name:"Kamppi Chapel of Silence",what:"Exterior",note:"Photograph the curved wooden shell from Narinkka square.",at:[60.16950,24.93640]},
- {n:7,t:"13:35–14:35",name:"Old Market Hall",what:"Lunch",note:"Food stalls and soup counters. Open until 18:00 on Mondays.",at:[60.16620,24.95300]},
- {n:8,t:"14:55–16:05",name:"Oodi Central Library",what:"Play & photos",note:"Top-floor 'book heaven' and the children's area on the 3rd floor.",at:[60.17370,24.93810]},
- {n:9,t:"16:10–16:30",name:"Central Railway Station",what:"Photos",note:"Dark by now; the clock tower and stone figures are lit.",at:[60.17190,24.94140]},
- {n:"H",t:"16:45",name:"Scandic Helsinki Hub",what:"Pick up luggage",note:"About 45 min buffer before your 17:30 deadline.",at:HOTEL,end:true},
+ {n:"H",t:"Before 10:00",name:"Scandic Helsinki Hub",what:"Start",note:"Annankatu 18. Leave luggage at the hotel.",at:HOTEL},
+ {n:1,t:"10:00–10:40",name:"Temppeliaukio Church",what:"Visit",note:"Open 09:00–16:00 today. €8 entry.",at:[60.17300,24.92530]},
+ {n:2,t:"10:40–11:05",name:"Travel to Café Regatta",what:"Bus or taxi",note:"Use public transport or a taxi for the Regatta legs rather than walking with Thea.",at:null},
+ {n:3,t:"11:05–11:50",name:"Café Regatta",what:"Cinnamon buns, coffee, waterfront photos",note:"Merikannontie 8. Open 09:00–21:00 daily. Mostly outdoor seating: dress Thea warmly, cut it short if windy.",at:[60.18136,24.90989]},
+ {n:"+",t:"Only if ahead",name:"Sibelius Monument",what:"Optional photo stop",note:"10–15 min, a short walk from Regatta.",at:[60.18200,24.91330],opt:true},
+ {n:4,t:"11:50–12:20",name:"Return towards Kamppi",what:"Bus or taxi",note:"",at:null},
+ {n:5,t:"12:20–12:40",name:"Kamppi Chapel of Silence",what:"Exterior",note:"Photograph the curved wooden shell from Narinkka square.",at:[60.16950,24.93640]},
+ {n:6,t:"12:40–13:10",name:"K-Market",what:"Diaper exchange",note:"Which K-Market? Tell me and I'll pin it.",at:null},
+ {n:7,t:"13:10–14:15",name:"Old Market Hall",what:"Lunch",note:"Open until 18:00 on Mondays.",at:[60.16620,24.95300]},
+ {n:8,t:"14:15–14:40",name:"Walk to Oodi",what:"Walk",note:"",at:null},
+ {n:9,t:"14:40–15:50",name:"Oodi Central Library",what:"Architecture & children's area",note:"Children's area on the 3rd floor, 'book heaven' at the top.",at:[60.17370,24.93810]},
+ {n:"H",t:"16:00–17:30",name:"Scandic Helsinki Hub",what:"Rest & luggage",note:"Rest, then collect your bags.",at:HOTEL,end:true},
+ {n:10,t:"17:30–18:15",name:"Early dinner or takeaway",what:"Dinner",note:"",at:null},
+ {n:11,t:"18:30",name:"Central Railway Station",what:"Arrive for train",note:"Rovaniemi train at 19:30 (check your confirmed departure).",at:[60.17190,24.94140]},
+ {n:"🚆",t:"19:30",name:"Rovaniemi train",what:"Departure",note:"",at:null},
 ];
 const FOCUS_ROUTE=[HOTEL,[60.1690,24.9330],[60.1715,24.9290],[60.17300,24.92530],
-  [60.1750,24.9230],[60.1775,24.9200],[60.1800,24.9165],[60.18200,24.91330],[60.1818,24.9110],[60.18136,24.90989],
-  [60.1795,24.9100],[60.1765,24.9065],[60.1735,24.9035],[60.17080,24.90150],[60.1690,24.9045],[60.1672,24.9080],[60.16520,24.91280],
-  [60.1660,24.9200],[60.1675,24.9290],[60.1690,24.9340],[60.16950,24.93640],
+  [60.1750,24.9230],[60.1775,24.9200],[60.1800,24.9165],[60.1815,24.9120],[60.18136,24.90989],
+  [60.1800,24.9165],[60.1770,24.9230],[60.1740,24.9290],[60.1715,24.9330],[60.16950,24.93640],
   [60.1683,24.9420],[60.1676,24.9480],[60.1672,24.9520],[60.16620,24.95300],
   [60.1676,24.9480],[60.1700,24.9440],[60.1718,24.9395],[60.17370,24.93810],
-  [60.17190,24.94140],[60.1700,24.9405],[60.1680,24.9390],HOTEL];
+  [60.1718,24.9395],[60.1700,24.9390],[60.1680,24.9385],HOTEL,
+  [60.1680,24.9390],[60.1700,24.9405],[60.17190,24.94140]];
 let focus=false, savedActive=null;
 
 // ---------- Helpers ----------
@@ -395,13 +399,13 @@ WALKS.forEach(([n,d,pts])=>L.polyline(pts,{color:css('var(--c-notes)'),weight:4,
 walkLayer.addTo(map);
 const focusLayer=L.layerGroup(); const focusMarkers={};
 L.polyline(FOCUS_ROUTE,{color:css('var(--c-plan)'),weight:6,opacity:.95})
-  .bindPopup('<span class="cat">9 Nov Plan</span><h3>Today\'s route</h3>10:00–16:45. Hotel → Temppeliaukio → Sibelius Monument → Café Regatta → shore walk → Kamppi Chapel → Old Market Hall → Oodi → Central Station → hotel. About 9 km on foot; bus or tram from Mechelininkatu if tired.')
+  .bindPopup('<span class="cat">9 Nov Plan</span><h3>Today\'s route</h3>10:00–19:30. Temppeliaukio → Café Regatta → Kamppi Chapel → Old Market Hall → Oodi → hotel → Central Station. Use bus or taxi for the Regatta legs.')
   .addTo(focusLayer);
 FOCUS.forEach((f,i)=>{ if(!f.at||f.end) return;
   const icon=L.divIcon({className:'',iconSize:[30,30],iconAnchor:[15,15],
-    html:`<div class="pin sq" style="width:30px;height:30px;font-size:14px;background:${css('var(--c-plan)')}">${f.n}</div>`});
+    html:`<div class="pin sq" style="width:30px;height:30px;font-size:14px;background:${f.opt?'#fff':css('var(--c-plan)')};color:${f.opt?css('var(--c-plan)'):'#fff'};border-color:${f.opt?css('var(--c-plan)'):'#fff'}">${f.n}</div>`});
   const el=()=>{const d=document.createElement('div');
-    d.innerHTML=`<span class="cat">9 Nov Plan · ${f.n==='H'?'Start 10:00 · back 16:45':f.t}</span><h3>${f.name}</h3><b>${f.what}${f.n==='H'?' · then back here for luggage':''}</b><br>${f.note}`+
+    d.innerHTML=`<span class="cat">9 Nov Plan · ${f.n==='H'?'Start · back 16:00–17:30':f.t}</span><h3>${f.name}</h3><b>${f.what}${f.n==='H'?' · then back here for luggage':''}</b><br>${f.note}`+
       `<div class="links"><a href="${gmaps(f.at[0],f.at[1])}" target="_blank" rel="noopener">Walking directions ↗</a><a href="${gplace(f.name)}" target="_blank" rel="noopener">Reviews on Google ↗</a></div>`;
     const k=keyByName[f.name]||(f.name==='Café Regatta'?'regatta':f.name==='Scandic Helsinki Hub'?'hub':null);
     addPhoto(d,k,f.name,focusMarkers[i],f.at[0],f.at[1]);
@@ -454,15 +458,17 @@ function renderFocusList(){
   FOCUS.forEach((f,i)=>{
     const li=document.createElement('li');li.className='step';li.tabIndex=0;
     const d=me&&f.at?dist(me.lat,me.lng,f.at[0],f.at[1]):null;
-    li.innerHTML=`<span class="num sq" style="background:var(--c-plan)">${f.n}</span>
-      <div style="min-width:0"><span class="time">${f.t} · ${f.what}</span><b>${f.name}</b><p>${f.note}</p></div>
+    const bare=!f.at;
+    li.innerHTML=`<span class="num sq" style="${bare?'background:none;color:var(--c-plan);border:2px dashed var(--c-plan)':f.opt?'background:none;color:var(--c-plan);border:2px solid var(--c-plan)':'background:var(--c-plan)'}">${f.n}</span>
+      <div style="min-width:0"><span class="time">${f.t} · ${f.what}</span><b>${f.name}</b>${f.note?`<p>${f.note}</p>`:''}</div>
       <span class="dist">${d!=null?fmt(d)+'<br>'+walkMin(d):''}</span>`;
     const target=f.at, mk=focusMarkers[f.end?0:i];
-    const go=()=>{setFollow(false);map.flyTo(target,16);setTimeout(()=>mk&&mk.openPopup(),400);toggleSheet(false);};
+    const go=()=>{if(!target)return;setFollow(false);map.flyTo(target,16);setTimeout(()=>mk&&mk.openPopup(),400);toggleSheet(false);};
+    if(!target) li.style.cursor='default';
     li.onclick=go;li.onkeydown=e=>{if(e.key==='Enter')go();};
     listEl.appendChild(li);
   });
-  document.getElementById('summary').textContent='9 Nov Plan · 10:00–16:45 · back by 17:30 · tap the chip again to show everything';
+  document.getElementById('summary').textContent='9 Nov Plan · 10:00 → Rovaniemi train 19:30 · tap the chip again to show everything';
 }
 function renderList(){
   if(focus) return renderFocusList();
