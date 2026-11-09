@@ -248,13 +248,13 @@ const WALKS = [
 // ---------- 9 Nov Plan (focus mode: hides every other layer) ----------
 const HOTEL=[60.16650,24.93780];
 const FOCUS = [
- {n:"H",t:"Before 10:00",name:"Scandic Helsinki Hub",what:"Start",note:"Annankatu 18. Leave luggage at the hotel.",at:HOTEL},
- {n:1,t:"10:00–10:40",name:"Temppeliaukio Church",what:"Visit",note:"Open 09:00–16:00 today. €8 entry.",at:[60.17300,24.92530]},
- {n:2,t:"12:20–12:40",name:"Kamppi Chapel of Silence",what:"Exterior",note:"Photograph the curved wooden shell from Narinkka square.",at:[60.16950,24.93640]},
- {n:3,t:"12:40–13:10",name:"K-Supermarket Kamppi",what:"Diaper exchange",note:"Inside Kamppi Center, next to the chapel. Closest K store to the plan; swap if you meant another K-Market.",at:[60.16860,24.93230]},
- {n:4,t:"13:10–14:15",name:"Old Market Hall",what:"Lunch",note:"Open until 18:00 on Mondays.",at:[60.16620,24.95300]},
- {n:5,t:"14:15–14:40",name:"Walk to Oodi",what:"Walk",note:"About 1.3 km via Esplanadi and Mannerheimintie. Pin marks the leg, not a stop.",at:[60.17000,24.94400],leg:true},
- {n:6,t:"14:40–15:50",name:"Oodi Central Library",what:"Architecture & children's area",note:"Children's area on the 3rd floor, 'book heaven' at the top.",at:[60.17370,24.93810]},
+ {n:"H",t:"Leave 10:45",name:"Scandic Helsinki Hub",what:"Start",note:"Annankatu 18. Leave luggage at the hotel.",at:HOTEL},
+ {n:1,t:"11:00–11:40",name:"Temppeliaukio Church",what:"Visit",note:"Open 09:00–16:00 today. €8 entry.",at:[60.17300,24.92530]},
+ {n:2,t:"11:55–12:10",name:"Kamppi Chapel of Silence",what:"Exterior",note:"Photograph the curved wooden shell from Narinkka square.",at:[60.16950,24.93640]},
+ {n:3,t:"12:10–12:40",name:"K-Supermarket Kamppi",what:"Diaper exchange",note:"Inside Kamppi Center, next to the chapel. Closest K store to the plan; swap if you meant another K-Market.",at:[60.16860,24.93230]},
+ {n:4,t:"13:00–14:05",name:"Old Market Hall",what:"Lunch",note:"Open until 18:00 on Mondays.",at:[60.16620,24.95300]},
+ {n:5,t:"14:05–14:30",name:"Walk to Oodi",what:"Walk",note:"About 1.3 km via Esplanadi and Mannerheimintie. Pin marks the leg, not a stop.",at:[60.17000,24.94400],leg:true},
+ {n:6,t:"14:30–15:45",name:"Oodi Central Library",what:"Architecture & children's area",note:"Children's area on the 3rd floor, 'book heaven' at the top.",at:[60.17370,24.93810]},
  {n:"H",t:"16:00–17:30",name:"Scandic Helsinki Hub",what:"Rest & luggage",note:"Rest, then collect your bags.",at:HOTEL,end:true},
  {n:7,t:"17:30–18:15",name:"Kamppi Kortteli food court",what:"Early dinner or takeaway",note:"Quick options between the hotel and the station; Restaurant Karl Johan is also nearby on Yrjönkatu.",at:[60.16935,24.93330]},
  {n:8,t:"18:30",name:"Central Railway Station",what:"Arrive for train",note:"Rovaniemi train at 19:30 (check your confirmed departure).",at:[60.17190,24.94140]},
@@ -394,7 +394,7 @@ WALKS.forEach(([n,d,pts])=>L.polyline(pts,{color:css('var(--c-notes)'),weight:4,
 walkLayer.addTo(map);
 const focusLayer=L.layerGroup(); const focusMarkers={};
 L.polyline(FOCUS_ROUTE,{color:css('var(--c-plan)'),weight:6,opacity:.95})
-  .bindPopup('<span class="cat">9 Nov Plan</span><h3>Today\'s route</h3>10:00–19:30. Temppeliaukio → Kamppi Chapel → Old Market Hall → Oodi → hotel → Central Station.')
+  .bindPopup('<span class="cat">9 Nov Plan</span><h3>Today\'s route</h3>11:00–19:30. Temppeliaukio → Kamppi Chapel → Old Market Hall → Oodi → hotel → Central Station.')
   .addTo(focusLayer);
 FOCUS.forEach((f,i)=>{ if(!f.at||f.end) return;
   const icon=L.divIcon({className:'',iconSize:[30,30],iconAnchor:[15,15],
@@ -463,7 +463,7 @@ function renderFocusList(){
     li.onclick=go;li.onkeydown=e=>{if(e.key==='Enter')go();};
     listEl.appendChild(li);
   });
-  document.getElementById('summary').textContent='9 Nov Plan · 10:00 → Rovaniemi train 19:30 · tap the chip again to show everything';
+  document.getElementById('summary').textContent='9 Nov Plan · 11:00 → Rovaniemi train 19:30 · tap the chip again to show everything';
 }
 function renderList(){
   if(focus) return renderFocusList();
