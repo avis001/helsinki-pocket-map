@@ -105,6 +105,12 @@ body{background:var(--bg);color:var(--fg);font:15px/1.4 var(--body);overflow:hid
 .leaflet-popup-content .circled{color:#8863B5;font-weight:700}
 .leaflet-popup-content .planline{margin:6px 0;padding:6px 8px;border-left:3px solid #159E9C;background:#159E9C1a;border-radius:0 6px 6px 0}
 .leaflet-popup-content a{color:#0f5c8f;font-weight:600}
+.leaflet-popup-content .ph{display:block;margin:-12px -14px 10px;width:calc(100% + 28px);height:140px;background:#e6ebee center/cover no-repeat;border-radius:12px 12px 0 0;position:relative}
+.leaflet-popup-content .ph.loading{background-image:linear-gradient(90deg,#e6ebee,#f3f6f8,#e6ebee);background-size:200% 100%;animation:shim 1.2s infinite linear}
+.leaflet-popup-content .ph a{position:absolute;right:6px;bottom:6px;font:600 10px/1 var(--body);color:#fff;background:rgb(0 0 0 / .5);padding:3px 5px;border-radius:4px;text-decoration:none}
+@keyframes shim{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.leaflet-popup-content .ph.loading{animation:none}}
+.leaflet-popup-content{min-width:240px}
 .leaflet-popup-content .links{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px}
 .visit{margin-top:10px;width:100%;border:1px solid #cfd8dd;background:#fff;color:#14232e;font:600 13px/1 var(--body);padding:9px;border-radius:8px;cursor:pointer}
 .visit.on{background:#66A36C;border-color:#66A36C;color:#fff}
@@ -292,6 +298,61 @@ function pinIcon(p){
   const bg = done && s!=='x' ? `background:${css(catColor(cat))};color:#fff` : `background:${css(catColor(cat))}`;
   return L.divIcon({className:'',iconSize:[26,26],iconAnchor:[13,13],html:`<div class="${cls}" style="${bg}">${txt}</div>`});
 }
+// ---------- Photo previews (Wikipedia / Wikimedia Commons) ----------
+const WIKI = {
+ p1:"Helsinki Cathedral",p3:"Uspenski Cathedral",p4:"Esplanadi",p5:"Market Square, Helsinki",p6:"Sibelius Monument",
+ p7:"Helsinki Olympic Stadium",p8:"Kamppi Chapel",p9:"Helsinki Central Library Oodi",p10:"Helsinki Music Centre",p11:"Finlandia Hall",
+ p12:"National Museum of Finland",p13:"Temppeliaukio Church",p14:"Finnish National Opera and Ballet",p15:"Ateneum",p16:"Kiasma",
+ p17:"Amos Rex",p18:"Helsinki Art Museum",p19:"Museum of Finnish Architecture",p20:"Kunsthalle Helsinki",p21:"Sinebrychoff Art Museum",
+ p23:"Allas Sea Pool",p28:"Helsinki City Museum",p30:"Finnish Museum of Natural History",p31:"Korkeasaari Zoo",p32:"Linnanmäki",
+ p33:"Old Market Hall, Helsinki",p34:"Hakaniemi Market Hall",p35:"Hietalahti Market Hall",p36:"Stockmann Helsinki centre",
+ p37:"Kamppi Center",p40:"Redi (shopping centre)",p41:"Mall of Tripla",p42:"Suomenlinna",p43:"Vallisaari",p44:"Uunisaari",
+ p45:"Pihlajasaari",p46:"Töölönlahti",p47:"Kaisaniemi Botanic Garden",p48:"Seurasaari",p54:"Olympia Terminal",
+ p56:"Messukeskus Helsinki",p58:"Cable Factory",p59:"Korjaamo",p62:"Suvilahti",p26:"Kotiharju sauna",p25:"Löyly (sauna)",
+ station:"Helsinki Central railway station",kaivopuisto:"Kaivopuisto",lapinlahti:"Lapinlahti Hospital",
+ hietaniemi:"Hietaniemi beach",elaintarha:"Eläintarha (Helsinki)",engel:"Café Engel",regatta:"Café Regatta",
+};
+const NO_PHOTO = new Set(["xtoolo","info","karljohan","succes","laivasilta","p39","p49","p50","p51","p52","p57","p60","p61"]);
+const photoCache = {};
+const norm = t=>t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+async function wikiSummary(lang,title){
+  const r=await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replace(/ /g,'_'))}`);
+  if(!r.ok) return null; const j=await r.json();
+  const src=(j.thumbnail&&j.thumbnail.source)||(j.originalimage&&j.originalimage.source);
+  return src?{src:src.replace(/\/\d+px-/,'/480px-'),page:j.content_urls&&j.content_urls.mobile.page}:null;
+}
+async function wikiSearch(lang,q,mustWord){
+  const u=`https://${lang}.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrlimit=3&gsrsearch=${encodeURIComponent(q)}&prop=pageimages|info&inprop=url&piprop=thumbnail&pithumbsize=480`;
+  const r=await fetch(u); if(!r.ok) return null; const j=await r.json();
+  const pages=Object.values((j.query&&j.query.pages)||{}).sort((a,b)=>a.index-b.index);
+  const hit=pages.find(pg=>pg.thumbnail&&norm(pg.title).includes(mustWord));
+  return hit?{src:hit.thumbnail.source,page:hit.fullurl}:null;
+}
+function getPhoto(key,name){
+  if(NO_PHOTO.has(key)) return Promise.resolve(null);
+  const ck=key||name; if(photoCache[ck]!==undefined) return photoCache[ck];
+  const word=norm(name).replace(/^(cafe|helsinki|the)\s+/,'').split(/[\s&,(]+/).find(w=>w.length>3)||norm(name);
+  return photoCache[ck]=(async()=>{
+    try{
+      const t=WIKI[key];
+      if(t){ for(const lang of ['en','fi']){ const r=await wikiSummary(lang,t); if(r) return r; } }
+      for(const lang of ['en','fi']){ const r=await wikiSearch(lang,name+' Helsinki',word); if(r) return r; }
+    }catch(_){}
+    return null;
+  })();
+}
+function addPhoto(el,key,name,marker){
+  if(NO_PHOTO.has(key)) return;
+  const ph=document.createElement('div');ph.className='ph loading';el.prepend(ph);
+  getPhoto(key,name).then(r=>{
+    if(!r){ph.remove();marker.getPopup()&&marker.getPopup().update();return;}
+    const img=new Image();img.onload=()=>{ph.classList.remove('loading');ph.style.backgroundImage=`url("${r.src}")`;
+      ph.innerHTML=r.page?`<a href="${r.page}" target="_blank" rel="noopener">Photo: Wikipedia</a>`:'';};
+    img.onerror=()=>ph.remove(); img.src=r.src;
+  });
+}
+const keyByName = Object.fromEntries(P.map(p=>[p[3],p[0]]));
+
 function popup(p){
   const [key,label,cat,name,lat,lng,note]=p, pl=planOf[key];
   const el=document.createElement('div');
@@ -307,6 +368,7 @@ function popup(p){
       markers[key].setIcon(pinIcon(p));markers[key].closePopup();renderList();};
     el.appendChild(b);
   }
+  addPhoto(el,key,name,markers[key]);
   return el;
 }
 P.forEach(p=>{
@@ -329,6 +391,8 @@ FOCUS.forEach((f,i)=>{ if(!f.at||f.end) return;
   const el=()=>{const d=document.createElement('div');
     d.innerHTML=`<span class="cat">9 Nov Plan · ${f.n==='H'?'Start 10:00 · back 16:45':f.t}</span><h3>${f.name}</h3><b>${f.what}${f.n==='H'?' · then back here for luggage':''}</b><br>${f.note}`+
       `<div class="links"><a href="${gmaps(f.at[0],f.at[1])}" target="_blank" rel="noopener">Walking directions ↗</a><a href="${gplace(f.name)}" target="_blank" rel="noopener">Reviews on Google ↗</a></div>`;
+    const k=keyByName[f.name]||(f.name==='Café Regatta'?'regatta':f.name==='Scandic Helsinki Hub'?'hub':null);
+    addPhoto(d,k,f.name,focusMarkers[i]);
     return d;};
   focusMarkers[i]=L.marker(f.at,{icon,zIndexOffset:950,title:f.name}).bindPopup(el).addTo(focusLayer);
 });
